@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Geo AI Manajemen Pertanian Kab. Barru</title>
+    <!-- Leaflet CSS untuk Folium -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #f5f5f5; color: #333; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        header { background-color: #2e7d32; color: white; padding: 15px 0; text-align: center; margin-bottom: 30px; border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);}
+        nav { display: flex; justify-content: center; background-color: #4caf50; border-radius: 5px; margin-bottom: 30px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);}
+        nav a { color: white; text-decoration: none; padding: 15px 25px; display: inline-block; transition: background-color 0.3s;}
+        nav a:hover { background-color: #388e3c;}
+        .content { background-color: white; padding: 30px; border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 30px;}
+        h2 { color: #2e7d32; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid #eee;}
+        
+        /* Geo AI Section */
+        .geoai-flex { display: flex; gap: 24px; }
+        .geoai-sidebar {
+            background: #f9f9ff;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            padding: 20px 0;
+            min-width: 260px;
+            max-width: 320px;
+            width: 100%;
+            height: fit-content;
+        }
+        .geoai-sidebar h3 {
+            color: #2e7d32;
+            font-size: 18px;
+            margin: 0 0 18px 24px;
+        }
+        .layer-tabs {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding: 0 24px;
+            margin-bottom: 20px;
+        }
+        .layer-tab {
+            padding: 12px 16px;
+            background: #e0e0e0;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            text-align: left;
+            transition: all 0.3s;
+        }
+        .layer-tab:hover {
+            background: #bdbdbd;
+        }
+        .layer-tab.active {
+            background: #2e7d32;
+            color: white;
+        }
+        .add-button {
+            background-color: #4caf50;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            font-size: 24px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            transition: background-color 0.3s;
+            margin: 24px auto 0 auto;
+        }
+        .add-button:hover { background-color: #388e3c; }
+        .geoai-main {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+        .map-container {
+            height: 500px;
+            background-color: #eee;
+            border-radius: 5px;
+            margin-bottom: 0;
+            width: 100%;
+            overflow: hidden;
+            position: relative;
+        }
+        #folium-map {
+            height: 100%;
+            width: 100%;
+        }
+        .info-container {
+            background-color: #f9f9f9;
+            padding: 20px;
+            border-radius: 5px;
+            display: none;
+        }
+        .layer-info {
+            padding: 0 24px;
+            margin-bottom: 20px;
+            color: #666;
+            font-size: 14px;
+        }
+        .map-legend {
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 1px 5px rgba(0,0,0,0.2);
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+            font-size: 12px;
+            display: none;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            margin-right: 8px;
+            border: 1px solid #ccc;
+        }
+        
+        @media (max-width: 900px) {
+            .geoai-flex { flex-direction: column; }
+            .geoai-sidebar { max-width: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Geo AI Manajemen Pertanian Kab. Barru</h1>
+        </header>
+        <nav>
+            <a href="#" class="nav-link" data-target="home">Home</a>
+            <a href="#" class="nav-link" data-target="dashboard">Dashboard</a>
+            <a href="#" class="nav-link" data-target="geo-ai">Geo AI</a>
+            <a href="#" class="nav-link" data-target="login">Login</a>
+        </nav>
+
+        <!-- Geo AI Content -->
+        <div id="geo-ai" class="content" style="display: none;">
+            <h2>Analisis Geo AI</h2>
+            <div class="geoai-flex">
+                <!-- Sidebar dengan Tab System -->
+                <aside class="geoai-sidebar">
+                    <h3>Pilih Layer</h3>
+                    <div class="layer-tabs">
+                        <button class="layer-tab active" data-layer="none">Tidak ada</button>
+                        <button class="layer-tab" data-layer="Batuan Permukaan">Batuan Permukaan</button>
+                        <button class="layer-tab" data-layer="KTK 2">KTK 2</button>
+                        <button class="layer-tab" data-layer="C Organik">C Organik</button>
+                        <button class="layer-tab" data-layer="pH">pH</button>
+                        <button class="layer-tab" data-layer="Tesktur">Tesktur</button>
+                        <button class="layer-tab" data-layer="Drainase">Drainase</button>
+                        <button class="layer-tab" data-layer="Salinitas">Salinitas</button>
+                        <button class="layer-tab" data-layer="Kedalaman Tanah">Kedalaman Tanah</button>
+                        <button class="layer-tab" data-layer="Kemiringan Lereng">Kemiringan Lereng</button>
+                        <button class="layer-tab" data-layer="Kesesuaian Lahan">Kesesuaian Lahan</button>
+                    </div>
+                    
+                    <div class="layer-info" id="layer-info">
+                        <p>Pilih layer untuk melihat informasi lahan</p>
+                    </div>
+                    
+                    <button class="add-button" id="add-data">+</button>
+                    <!-- Modal Upload Layer Baru -->
+                    <div id="upload-modal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.3); z-index:2000; align-items:center; justify-content:center;">
+                        <div style="background:white; padding:32px 24px; border-radius:8px; min-width:320px; max-width:90vw; box-shadow:0 4px 16px rgba(0,0,0,0.2); position:relative;">
+                            <h3>Upload Layer Baru</h3>
+                            <form id="upload-form" enctype="multipart/form-data" method="post" action="/upload_layer">
+                                <label for="layer-name">Nama Layer:</label>
+                                <input type="text" id="layer-name" name="layer_name" required style="width:100%;margin-bottom:10px;">
+                                <label for="layer-file">File (zip/rar, shapefile/geojson):</label>
+                                <input type="file" id="layer-file" name="layer_file" accept=".zip,.rar,.geojson,.shp" required style="width:100%;margin-bottom:10px;">
+                                <div style="margin-top:10px; display:flex; gap:10px;">
+                                    <button type="submit" style="background:#2e7d32;color:white;padding:8px 18px;border:none;border-radius:4px;">Upload</button>
+                                    <button type="button" id="close-upload-modal" style="background:#ccc;padding:8px 18px;border:none;border-radius:4px;">Batal</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </aside>
+
+                <!-- Main Map & Info -->
+                <div class="geoai-main">
+                    <div class="map-container">
+                        <!-- Satu div/iframe untuk setiap layer -->
+                        <div id="folium-map-none" class="folium-map-tab" style="display:block;">
+                            <div style="text-align:center; color:#888; padding:100px 0;">Silakan pilih layer untuk menampilkan peta</div>
+                        </div>
+                        <iframe id="folium-map-batuan" class="folium-map-tab" src="/peta_BP.py" style="display:none;" width="100%" height="500" frameborder="0"></iframe>
+                        <iframe id="folium-map-ktk" class="folium-map-tab" src="/peta_ktk.py" style="display:none;" width="100%" height="500" frameborder="0"></iframe>
+                        <iframe id="folium-map-corg" class="folium-map-tab" src="/peta_Corg.py" style="display:none;" width="100%" height="500" frameborder="0"></iframe>
+                        <iframe id="folium-map-ph" class="folium-map-tab" src="/peta_ph.py" style="display:none;" width="100%" height="500" frameborder="0"></iframe>
+                        <iframe id="folium-map-tekstur" class="folium-map-tab" src="/peta_tektstur.py" style="display:none;" width="100%" height="500" frameborder="0"></iframe>
+                        <iframe id="folium-map-drainase" class="folium-map-tab" src="/peta_drainase.py" style="display:none;" width="100%" height="500" frameborder="0"></iframe>
+                        <iframe id="folium-map-salinitas" class="folium-map-tab" src="/peta_salinitas.py" style="display:none;" width="100%" height="500" frameborder="0"></iframe>
+                        <iframe id="folium-map-KedalamanTanah" class="folium-map-tab" src="/peta_KT.py" style="display:none;" width="100%" height="500" frameborder="0"></iframe>
+                        <iframe id="folium-map-lereng" class="folium-map-tab" src="/peta_lereng.py" style="display:none;" width="100%" height="500" frameborder="0"></iframe>
+                        <iframe id="folium-map-kesesuaian" class="folium-map-tab" src="/kesesuaian_lahan.py" style="display:none;" width="100%" height="500" frameborder="0"></iframe>
+                        <!-- dst, sesuai jumlah layer -->
+                        <div class="map-legend" id="map-legend" style="display: none;">
+                            <h4>Legenda</h4>
+                            <div id="legend-content"></div>
+                        </div>
+                    </div>
+                    <div class="info-container" id="support-info-container">
+                        <!-- Konten informasi pendukung -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Home Content (Default) -->
+        <div id="home" class="content">
+            <h2>Selamat Datang di Geo AI Manajemen Pertanian</h2>
+            <p>Platform untuk analisis dan manajemen pertanian berbasis geospasial di Kabupaten Barru.</p>
+            <div class="map-container">
+                <div id="folium-map-home" style="height: 500px;"></div>
+            </div>
+        </div>
+
+        <!-- Dashboard Content -->
+        <div id="dashboard" class="content" style="display: none;">
+            <h2>Dashboard</h2>
+            <p>Statistik dan informasi terkini tentang pertanian di Kabupaten Barru.</p>
+            <!-- Tambahkan konten dashboard di sini -->
+        </div>
+
+        <!-- Login Content -->
+        <div id="login" class="content" style="display: none;">
+            <h2>Login</h2>
+            <form id="login-form">
+                <div style="margin-bottom: 15px;">
+                    <label for="username" style="display: block; margin-bottom: 5px;">Username:</label>
+                    <input type="text" id="username" name="username" required style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px;">
+                </div>
+                <div style="margin-bottom: 15px;">
+                    <label for="password" style="display: block; margin-bottom: 5px;">Password:</label>
+                    <input type="password" id="password" name="password" required style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px;">
+                </div>
+                <button type="submit" style="width: 100%; padding: 10px; background-color: #2e7d32; color: white; border: none; border-radius: 4px; cursor: pointer;">Masuk</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const navLinks = document.querySelectorAll('.nav-link');
+            const contentSections = document.querySelectorAll('.content');
+
+            navLinks.forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const target = this.getAttribute('data-target');
+                    contentSections.forEach(section => {
+                        section.style.display = 'none';
+                    });
+                    document.getElementById(target).style.display = 'block';
+                    
+                    // Jika Geo AI ditampilkan, inisialisasi kontrol layer
+                    if (target === 'geo-ai') {
+                        initLayerControls();
+                    }
+                });
+            });
+
+            // Data layer dan legend
+            const layerData = {
+                'Batuan Permukaan': {
+                    name: 'Batuan Permukaan',
+                    legend: [
+                        { color: '#3e19d2', label: 'S1 - Sangat Sesuai' },
+                        { color: '#6470f6', label: 'S2 - Sesuai' },
+                        { color: '#90d9f9', label: 'S3 - Cukup Sesuai' },
+                        { color: '#ff3c00', label: 'N - Tidak Sesuai' }
+                    ],
+                    description: 'Jenis batuan yang dominan di permukaan',
+                    info: '<h3>Batuan Permukaan</h3><p>Karakteristik batuan dominan di wilayah ini:</p><ul><li>Komposisi mineral</li><li>Tingkat pelapukan</li><li>Kedalaman lapisan</li></ul>'
+                },
+                'KTK 2': {
+                    name: 'KTK 2',
+                    legend: [
+                        { color: '#d93535', label: 'S1' },
+                        { color: '#e57373', label: 'S2' },
+                        { color: '#ffb74d', label: 'S3' },
+                        { color: '#616161', label: 'N' }
+                    ],
+                    description: 'Kapasitas Tukar Kation tanah',
+                    info: '<h3>KTK 2</h3><p>Kapasitas tukar kation menunjukkan kemampuan tanah menahan dan menukar kation:</p><ul><li>KTK tinggi (&gt;25 cmol/kg)</li><li>KTK sedang (16-25 cmol/kg)</li><li>KTK rendah (&lt;16 cmol/kg)</li></ul>'
+                },
+                'C Organik': {
+                    name: 'C Organik',
+                    legend: [
+                        { color: '#388e3c', label: 'S1' },
+                        { color: '#81c784', label: 'S2' },
+                        { color: '#c8e6c9', label: 'S3' }
+                    ],
+                    description: 'Kandungan karbon organik tanah',
+                    info: '<h3>C Organik</h3><p>Kandungan karbon organik mempengaruhi kesuburan tanah.</p>'
+                },
+                'pH': {
+                    name: 'pH',
+                    legend: [
+                        { color: '#7b1fa2', label: 'S1' },
+                        { color: '#ba68c8', label: 'S2' },
+                        { color: '#e1bee7', label: 'S3' }
+                    ],
+                    description: 'Tingkat keasaman tanah',
+                    info: '<h3>pH Tanah</h3><p>pH tanah mempengaruhi ketersediaan unsur hara.</p>'
+                },
+                'Tesktur': {
+                    name: 'Tesktur',
+                    legend: [
+                        { color: '#99e573', label: 'S1' },
+                        { color: '#ffe0b2', label: 'S3' },
+                        { color: '#ff1919', label: 'N' }
+                    ],
+                    description: 'Tekstur tanah',
+                    info: '<h3>Tekstur Tanah</h3><p>Tekstur tanah mempengaruhi kemampuan tanah menahan air dan unsur hara.</p>'
+                },
+                'Drainase': {
+                    name: 'Drainase',
+                    legend: [
+                        { color: '#00f5dd', label: 'S1' },
+                        { color: '#ffb74d', label: 'S3' },
+                        { color: '#616161', label: 'N' }
+                    ],
+                    description: 'Kondisi drainase tanah',
+                    info: '<h3>Drainase</h3><p>Drainase tanah mempengaruhi pertumbuhan tanaman.</p>'
+                },
+                'Salinitas': {
+                    name: 'Salinitas',
+                    legend: [
+                        { color: '#7b1fa2', label: 'S1' }
+                    ],
+                    description: 'Kadar garam tanah',
+                    info: '<h3>Salinitas</h3><p>Kadar garam tanah mempengaruhi pertumbuhan tanaman.</p>'
+                },
+                'Kedalaman Tanah': {
+                    name: 'Kedalaman Tanah',
+                    legend: [
+                        { color: '#35d945', label: 'S1' },
+                        { color: '#97e573', label: 'S2' },
+                        { color: '#ffb74d', label: 'S3' },
+                        { color: '#ff1919', label: 'N' }
+                    ],
+                    description: 'Kedalaman efektif tanah',
+                    info: '<h3>Kedalaman Tanah</h3><p>Kedalaman tanah menentukan zona perakaran tanaman.</p>'
+                },
+                'Kemiringan Lereng': {
+                    name: 'Kemiringan Lereng',
+                    legend: [
+                        { color: '#35d945', label: 'S1' },
+                        { color: '#97e573', label: 'S2' },
+                        { color: '#ffb74d', label: 'S3' },
+                        { color: '#ff1919', label: 'N' }
+                    ],
+                    description: 'Kemiringan lereng lahan',
+                    info: '<h3>Kemiringan Lereng</h3><p>Kemiringan lereng mempengaruhi risiko erosi dan pengelolaan lahan.</p>'
+                },
+                'Kesesuaian Lahan': {
+                    name: 'Kesesuaian Lahan',
+                    legend: [
+                        { color: '#1a9641', label: 'Sangat Sesuai' },
+                        { color: '#a6d96a', label: 'Sesuai' },
+                        { color: '#fdae61', label: 'Sesuai Marginal' },
+                        { color: '#d7191c', label: 'Tidak Sesuai' }
+                    ],
+                    description: 'Peta hasil integrasi seluruh karakteristik lahan.',
+                    info: '<h3>Kesesuaian Lahan</h3><p>Peta ini menunjukkan tingkat kesesuaian lahan berdasarkan seluruh parameter yang dianalisis.</p>'
+                }
+            };
+
+            // Fungsi untuk mengontrol layer
+            function initLayerControls() {
+                const layerTabs = document.querySelectorAll('.layer-tab');
+                const supportInfoContainer = document.getElementById('support-info-container');
+                const layerInfo = document.getElementById('layer-info');
+                const mapLegend = document.getElementById('map-legend');
+                const legendContent = document.getElementById('legend-content');
+                
+                layerTabs.forEach(tab => {
+                    tab.addEventListener('click', function() {
+                        // Update UI tabs
+                        layerTabs.forEach(t => t.classList.remove('active'));
+                        this.classList.add('active');
+                        
+                        const layer = this.dataset.layer;
+                        
+                        // Sembunyikan legend dan info
+                        mapLegend.style.display = 'none';
+                        supportInfoContainer.style.display = 'none';
+                        
+                        // Tampilkan layer yang dipilih
+                        if (layer === 'none') {
+                            layerInfo.innerHTML = `<p>Pilih layer untuk melihat informasi lahan</p>`;
+                            // Sembunyikan semua iframe peta
+                            document.querySelectorAll('.folium-map-tab').forEach(div => div.style.display = 'none');
+                            document.getElementById('folium-map-none').style.display = 'block';
+                        } else {
+                            // Tampilkan informasi layer
+                            const currentLayer = layerData[layer];
+                            layerInfo.innerHTML = `
+                                <h4>${currentLayer.name}</h4>
+                                <p>${currentLayer.description}</p>
+                            `;
+                            
+                            // Buat legend
+                            legendContent.innerHTML = '';
+                            currentLayer.legend.forEach(item => {
+                                legendContent.innerHTML += `
+                                    <div class="legend-item">
+                                        <div class="legend-color" style="background-color:${item.color}"></div>
+                                        <span>${item.label}</span>
+                                    </div>
+                                `;
+                            });
+                            
+                            // Tampilkan info tambahan
+                            supportInfoContainer.style.display = 'block';
+                            supportInfoContainer.innerHTML = currentLayer.info;
+                            mapLegend.style.display = 'block';
+                            
+                            // Sembunyikan semua iframe peta
+                            document.querySelectorAll('.folium-map-tab').forEach(div => div.style.display = 'none');
+                            // Tampilkan iframe sesuai layer
+                            if (layer === 'Batuan Permukaan') {
+                                document.getElementById('folium-map-batuan').style.display = 'block';
+                            } else if (layer === 'KTK 2') {
+                                document.getElementById('folium-map-ktk').style.display = 'block';
+                            } else if (layer === 'C Organik') {
+                                document.getElementById('folium-map-corg').style.display = 'block';
+                            } else if (layer === 'pH') {
+                                document.getElementById('folium-map-ph').style.display = 'block';
+                            } else if (layer === 'Tesktur') {
+                                document.getElementById('folium-map-tekstur').style.display = 'block';
+                            } else if (layer === 'Drainase') {
+                                document.getElementById('folium-map-drainase').style.display = 'block';
+                            } else if (layer === 'Salinitas') {
+                                document.getElementById('folium-map-salinitas').style.display = 'block';
+                            } else if (layer === 'Kedalaman Tanah') {
+                                document.getElementById('folium-map-KedalamanTanah').style.display = 'block';
+                            } else if (layer === 'Kemiringan Lereng') {
+                                document.getElementById('folium-map-lereng').style.display = 'block';
+                            } else if (layer === 'Kesesuaian Lahan') {
+                                document.getElementById('folium-map-kesesuaian').style.display = 'block';
+                            }
+                        }
+                    });
+                });
+
+                // Add button functionality
+                const addButton = document.getElementById('add-data');
+                const uploadModal = document.getElementById('upload-modal');
+                const closeUploadModal = document.getElementById('close-upload-modal');
+                addButton.addEventListener('click', function() {
+                    uploadModal.style.display = 'flex';
+                });
+                if (closeUploadModal) {
+                    closeUploadModal.addEventListener('click', function() {
+                        uploadModal.style.display = 'none';
+                    });
+                }
+                // Tutup modal jika klik di luar form
+                uploadModal && uploadModal.addEventListener('click', function(e) {
+                    if (e.target === uploadModal) uploadModal.style.display = 'none';
+                });
+                
+                // Aktifkan tab pertama (Tidak ada)
+                document.querySelector('.layer-tab.active').click();
+            }
+
+            
+            // Show dashboard by default
+            document.getElementById('home').style.display = 'block';
+
+            // Tidak perlu lagi inisialisasi window.folium_map atau fungsi show/hide layer folium karena sudah pakai iframe per layer
+        });
+    </script>
+</body>
+</html>
