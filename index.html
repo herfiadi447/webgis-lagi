@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Geo AI Manajemen Pertanian Kab. Barru</title>
+    <!-- Leaflet CSS untuk Folium -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #f5f5f5; color: #333; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        header { background-color: #2e7d32; color: white; padding: 15px 0; text-align: center; margin-bottom: 30px; border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);}
+        nav { display: flex; justify-content: center; background-color: #4caf50; border-radius: 5px; margin-bottom: 30px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);}
+        nav a { color: white; text-decoration: none; padding: 15px 25px; display: inline-block; transition: background-color 0.3s;}
+        nav a:hover { background-color: #388e3c;}
+        .content { background-color: white; padding: 30px; border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 30px;}
+        h2 { color: #2e7d32; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid #eee;}
+        
+        /* Geo AI Section */
+        .geoai-flex { display: flex; gap: 24px; }
+        .geoai-sidebar {
+            background: #f9f9ff;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            padding: 20px 0;
+            min-width: 260px;
+            max-width: 320px;
+            width: 100%;
+            height: fit-content;
+        }
+        .geoai-sidebar h3 {
+            color: #2e7d32;
+            font-size: 18px;
+            margin: 0 0 18px 24px;
+        }
+        .layer-tabs {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding: 0 24px;
+            margin-bottom: 20px;
+        }
+        .layer-tab {
+            padding: 12px 16px;
+            background: #e0e0e0;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            text-align: left;
+            transition: all 0.3s;
+        }
+        .layer-tab:hover {
+            background: #bdbdbd;
+        }
+        .layer-tab.active {
+            background: #2e7d32;
+            color: white;
+        }
+        .add-button {
+            background-color: #4caf50;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            font-size: 24px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            transition: background-color 0.3s;
+            margin: 24px auto 0 auto;
+        }
+        .add-button:hover { background-color: #388e3c; }
+        .geoai-main {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+        .map-container {
+            height: 500px;
+            background-color: #eee;
+            border-radius: 5px;
+            margin-bottom: 0;
+            width: 100%;
+            overflow: hidden;
+            position: relative;
+        }
+        #folium-map {
+            height: 100%;
+            width: 100%;
+        }
+        .info-container {
+            background-color: #f9f9f9;
+            padding: 20px;
+            border-radius: 5px;
+            display: none;
+        }
+        .layer-info {
+            padding: 0 24px;
+            margin-bottom: 20px;
+            color: #666;
+            font-size: 14px;
+        }
+        .map-legend {
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 1px 5px rgba(0,0,0,0.2);
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+            font-size: 12px;
+            display: none;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            margin-right: 8px;
+            border: 1px solid #ccc;
+        }
+        
+        @media (max-width: 900px) {
+            .geoai-flex { flex-direction: column; }
+            .geoai-sidebar { max-width: none; }
+        }
+
+        .chatbot-header {
+            background: #2e7d32;
+            color: white;
+            padding: 10px 15px;
+            border-radius: 4px;
+            font-weight: bold;
+            text-align: center;
+            margin: -16px -16px 16px -16px;
+            position: relative;
+        }
+        .chatbot-header:after {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 4px;
+            background: #4caf50;
+            bottom: -4px;
+            left: 0;
+        }
+        .chatbot-messages {
+            max-height: 300px;
+            overflow-y: auto;
+            margin-bottom: 16px;
+            padding-right: 8px;
+        }
+        .chatbot-input-area {
+            display: flex;
+            gap: 8px;
+        }
+        .chatbot-input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .chatbot-send-btn {
+            background: #2e7d32;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 10px 15px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+        .chatbot-send-btn:hover {
+            background: #388e3c;
+        }
+
+        /* Geo AI Chatbot Styles */
+        #geoai-chatbot-box {
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.10);
+            max-width: 700px;
+            margin: 32px auto 0 auto;
+            display: flex;
+            flex-direction: column;
+            height: 420px;
+            position: relative;
+        }
+        .geoai-chatbot-header {
+            background: #fff;
+            color: #222;
+            padding: 18px 24px 10px 24px;
+            border-radius: 10px 10px 0 0;
+            font-weight: bold;
+            font-size: 1.2em;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .geoai-chatbot-beta {
+            font-size: 0.9em;
+            color: #888;
+            background: #f3f3f3;
+            border-radius: 6px;
+            padding: 2px 10px;
+            margin-left: 8px;
+        }
+        .geoai-chatbot-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px 24px 8px 24px;
+            background: #f8f9fb;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .geoai-chatbot-message {
+            display: flex;
+            align-items: flex-end;
+            gap: 8px;
+        }
+        .geoai-chatbot-message.user {
+            justify-content: flex-end;
+        }
+        .geoai-chatbot-message.bot {
+            justify-content: flex-start;
+        }
+        .geoai-chatbot-bubble {
+            padding: 12px 18px;
+            border-radius: 18px;
+            max-width: 70%;
+            font-size: 1em;
+            line-height: 1.5;
+            word-break: break-word;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+        }
+        .geoai-chatbot-message.user .geoai-chatbot-bubble {
+            background: #6366f1;
+            color: #fff;
+            border-bottom-right-radius: 6px;
+        }
+        .geoai-chatbot-message.bot .geoai-chatbot-bubble {
+            background: #f3f3f3;
+            color: #222;
+            border-bottom-left-radius: 6px;
+        }
+        .geoai-chatbot-input-area {
+            display: flex;
+            gap: 8px;
+            padding: 16px 24px 18px 24px;
+            border-top: 1px solid #e0e0e0;
+            background: #fff;
+        }
+        .geoai-chatbot-input {
+            flex: 1;
+            padding: 12px 16px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+            font-size: 1em;
+            outline: none;
+            background: #f8f9fb;
+        }
+        .geoai-chatbot-send-btn {
+            background: #6366f1;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            padding: 0 22px;
+            font-size: 1em;
+            cursor: pointer;
+            font-weight: 500;
+            transition: background 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .geoai-chatbot-send-btn:disabled {
+            background: #b3baf7;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Geo AI Manajemen Pertanian Kab. Barru</h1>
+        </header>
+        <nav>
+            <a href="#" class="nav-link" data-target="home">Home</a>
+            <a href="#" class="nav-link" data-target="geo-ai">Geo AI</a>
+            <a href="#" class="nav-link" data-target="dashboard">Dashboard</a>
+        </nav>
+
+        <!-- Geo AI Content -->
+        <div id="geo-ai" class="content" style="display: none;">
+            <h2>Analisis Geo AI</h2>
+            <div class="geoai-flex">
+                <!-- Sidebar dengan Tab System -->
+                <aside class="geoai-sidebar">
+                    <h3>Pilih Layer</h3>
+                    <div class="layer-tabs">
+                        <button class="layer-tab active" data-layer="Batuan Permukaan">Batuan Permukaan</button>
+                        <button class="layer-tab" data-layer="KTK">KTK</button>
+                        <button class="layer-tab" data-layer="C Organik">C Organik</button>
+                        <button class="layer-tab" data-layer="pH">pH</button>
+                        <button class="layer-tab" data-layer="Tesktur">Tesktur</button>
+                        <button class="layer-tab" data-layer="Drainase">Drainase</button>
+                        <button class="layer-tab" data-layer="Salinitas">Salinitas</button>
+                        <button class="layer-tab" data-layer="Kedalaman Tanah">Kedalaman Tanah</button>
+                        <button class="layer-tab" data-layer="Kemiringan Lereng">Kemiringan Lereng</button>
+                        <button class="layer-tab" data-layer="Kesesuaian Lahan">Kesesuaian Lahan</button>
+                    </div>
+                    
+                    <div class="layer-info" id="layer-info">
+                        <p>Pilih layer untuk melihat informasi lahan</p>
+                    </div>
+                    
+                    <button class="add-button" id="add-data">+</button>
+                    <!-- Modal Upload Layer Baru -->
+                    <div id="upload-modal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.3); z-index:2000; align-items:center; justify-content:center;">
+                        <div style="background:white; padding:32px 24px; border-radius:8px; min-width:320px; max-width:90vw; box-shadow:0 4px 16px rgba(0,0,0,0.2); position:relative;">
+                            <h3>Upload Layer Baru</h3>
+                            <form id="upload-form" enctype="multipart/form-data" method="post" action="/upload_layer">
+                                <label for="layer-name">Nama Layer:</label>
+                                <input type="text" id="layer-name" name="layer_name" required style="width:100%;margin-bottom:10px;">
+                                <label for="layer-file">File (zip/rar, shapefile/geojson):</label>
+                                <input type="file" id="layer-file" name="layer_file" accept=".zip,.rar,.geojson,.shp" required style="width:100%;margin-bottom:10px;">
+                                <div style="margin-top:10px; display:flex; gap:10px;">
+                                    <button type="submit" style="background:#2e7d32;color:white;padding:8px 18px;border:none;border-radius:4px;">Upload</button>
+                                    <button type="button" id="close-upload-modal" style="background:#ccc;padding:8px 18px;border:none;border-radius:4px;">Batal</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </aside>
+
+                <!-- Main Map & Info -->
+                <div class="geoai-main">
+                    <div class="map-container">
+                        <!-- Satu div/iframe untuk setiap layer -->
+                        <div id="folium-map-none" class="folium-map-tab" style="display:block;">
+                            <div style="text-align:center; color:#888; padding:100px 0;">Silakan pilih layer untuk menampilkan peta</div>
+                        </div>
+                        <iframe id="folium-map-batuan" class="folium-map-tab" src="/peta_BP.py" style="display:none;" width="100%" height="500" frameborder="0"></iframe>
+                        <iframe id="folium-map-ktk" class="folium-map-tab" src="/peta_ktk.py" style="display:none;" width="100%" height="500" frameborder="0"></iframe>
+                        <iframe id="folium-map-corg" class="folium-map-tab" src="/peta_Corg.py" style="display:none;" width="100%" height="500" frameborder="0"></iframe>
+                        <iframe id="folium-map-ph" class="folium-map-tab" src="/peta_ph.py" style="display:none;" width="100%" height="500" frameborder="0"></iframe>
+                        <iframe id="folium-map-tekstur" class="folium-map-tab" src="/peta_tektstur.py" style="display:none;" width="100%" height="500" frameborder="0"></iframe>
+                        <iframe id="folium-map-drainase" class="folium-map-tab" src="/peta_drainase.py" style="display:none;" width="100%" height="500" frameborder="0"></iframe>
+                        <iframe id="folium-map-salinitas" class="folium-map-tab" src="/peta_salinitas.py" style="display:none;" width="100%" height="500" frameborder="0"></iframe>
+                        <iframe id="folium-map-KedalamanTanah" class="folium-map-tab" src="/peta_KT.py" style="display:none;" width="100%" height="500" frameborder="0"></iframe>
+                        <iframe id="folium-map-lereng" class="folium-map-tab" src="/peta_lereng.py" style="display:none;" width="100%" height="500" frameborder="0"></iframe>
+                        <iframe id="folium-map-kesesuaian" class="folium-map-tab" src="/kesesuaian_lahan.py" style="display:none;" width="100%" height="500" frameborder="0"></iframe>
+                        <!-- dst, sesuai jumlah layer -->
+                        <div class="map-legend" id="map-legend" style="display: none;">
+                            <h4>Legenda</h4>
+                            <div id="legend-content"></div>
+                        </div>
+                    </div>
+                    <div class="info-container" id="support-info-container">
+                        <!-- Konten informasi pendukung -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Home Content (Default) -->
+        <div id="home" class="content">
+            <h2>Selamat Datang di Geo AI Manajemen Pertanian</h2>
+            <p>Platform untuk analisis dan manajemen pertanian berbasis geospasial di Kabupaten Barru.</p>
+            <div class="map-container">
+                <div id="folium-map-home" style="height: 500px;"></div>
+            </div>
+        </div>
+
+        <!-- chatbot Content -->
+        <div id="chatbot" class="content" style="display: none;">
+            <h2>Chatbot</h2>
+            <p>Ajukan pertanyaan seputar pertanian dan geospasial.</p>
+            <div id="geoai-chatbot-box">
+                <div class="geoai-chatbot-header">
+                    <span>Geo AI</span>
+                    <span class="geoai-chatbot-beta">Versi Beta</span>
+                </div>
+                <div class="geoai-chatbot-messages" id="geoai-chatbot-messages"></div>
+                <form class="geoai-chatbot-input-area" id="geoai-chatbot-form" autocomplete="off">
+                    <input type="text" id="geoai-chatbot-input" class="geoai-chatbot-input" placeholder="Tanya Geo AI..." required autocomplete="off">
+                    <button type="submit" class="geoai-chatbot-send-btn" id="geoai-chatbot-send-btn">
+                        Kirim <span style="font-size:1.1em;">&#128073;</span>
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- dashboard (Chart Distribusi Kelas Lahan) -->
+        <div id="dashboard" class="content" style="display: none;">
+            <h2>Distribusi Kelas Kesesuaian Lahan</h2>
+            <div style="max-width:400px;margin:32px auto;">
+                <canvas id="kelasLahanChart"></canvas>
+            </div>
+        </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const navLinks = document.querySelectorAll('.nav-link');
+            const contentSections = document.querySelectorAll('.content');
+
+            navLinks.forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const target = this.getAttribute('data-target');
+                    contentSections.forEach(section => {
+                        section.style.display = 'none';
+                    });
+                    document.getElementById(target).style.display = 'block';
+                    
+                    // Jika Geo AI ditampilkan, inisialisasi kontrol layer
+                    if (target === 'geo-ai') {
+                        initLayerControls();
+                    }
+                });
+            });
+
+            // Data layer dan legend
+            const layerData = {
+                'Batuan Permukaan': {
+                    name: 'Batuan Permukaan',
+                    legend: [
+                        { color: '#3e19d2', label: 'S1 - Sangat Sesuai' },
+                        { color: '#6470f6', label: 'S2 - Sesuai' },
+                        { color: '#90d9f9', label: 'S3 - Cukup Sesuai' },
+                        { color: '#ff3c00', label: 'N - Tidak Sesuai' }
+                    ],
+                    description: 'Jenis batuan yang dominan di permukaan',
+                    info: '<h3>Batuan Permukaan</h3><p>Karakteristik batuan dominan di wilayah ini:</p><ul><li>Komposisi mineral</li><li>Tingkat pelapukan</li><li>Kedalaman lapisan</li></ul>'
+                },
+                'KTK': {
+                    name: 'KTK',
+                    legend: [
+                        { color: '#d93535', label: 'S1' },
+                        { color: '#e57373', label: 'S2' },
+                        { color: '#ffb74d', label: 'S3' },
+                        { color: '#616161', label: 'N' }
+                    ],
+                    description: 'Kapasitas Tukar Kation tanah',
+                    info: '<h3>KTK</h3><p>Kapasitas tukar kation menunjukkan kemampuan tanah menahan dan menukar kation:</p><ul><li>KTK tinggi (&gt;25 cmol/kg)</li><li>KTK sedang (16-25 cmol/kg)</li><li>KTK rendah (&lt;16 cmol/kg)</li></ul>'
+                },
+                'C Organik': {
+                    name: 'C Organik',
+                    legend: [
+                        { color: '#388e3c', label: 'S1' },
+                        { color: '#81c784', label: 'S2' },
+                        { color: '#c8e6c9', label: 'S3' }
+                    ],
+                    description: 'Kandungan karbon organik tanah',
+                    info: '<h3>C Organik</h3><p>Kandungan karbon organik mempengaruhi kesuburan tanah.</p>'
+                },
+                'pH': {
+                    name: 'pH',
+                    legend: [
+                        { color: '#7b1fa2', label: 'S1' },
+                        { color: '#af55be', label: 'S2' },
+                        { color: '#d593df', label: 'S3' }
+                    ],
+                    description: 'Tingkat keasaman tanah',
+                    info: '<h3>pH Tanah</h3><p>pH tanah mempengaruhi ketersediaan unsur hara.</p>'
+                },
+                'Tesktur': {
+                    name: 'Tesktur',
+                    legend: [
+                        { color: '#99e573', label: 'S1' },
+                        { color: '#ffe0b2', label: 'S3' },
+                        { color: '#ff1919', label: 'N' }
+                    ],
+                    description: 'Tekstur tanah',
+                    info: '<h3>Tekstur Tanah</h3><p>Tekstur tanah mempengaruhi kemampuan tanah menahan air dan unsur hara.</p>'
+                },
+                'Drainase': {
+                    name: 'Drainase',
+                    legend: [
+                        { color: '#00f5dd', label: 'S1' },
+                        { color: '#ffb74d', label: 'S3' },
+                        { color: '#616161', label: 'N' }
+                    ],
+                    description: 'Kondisi drainase tanah',
+                    info: '<h3>Drainase</h3><p>Drainase tanah mempengaruhi pertumbuhan tanaman.</p>'
+                },
+                'Salinitas': {
+                    name: 'Salinitas',
+                    legend: [
+                        { color: '#43d935', label: 'S1' }
+                    ],
+                    description: 'Kadar garam tanah',
+                    info: '<h3>Salinitas</h3><p>Kadar garam tanah mempengaruhi pertumbuhan tanaman.</p>'
+                },
+                'Kedalaman Tanah': {
+                    name: 'Kedalaman Tanah',
+                    legend: [
+                        { color: '#35d945', label: 'S1' },
+                        { color: '#97e573', label: 'S2' },
+                        { color: '#ffb74d', label: 'S3' },
+                        { color: '#ff1919', label: 'N' }
+                    ],
+                    description: 'Kedalaman efektif tanah',
+                    info: '<h3>Kedalaman Tanah</h3><p>Kedalaman tanah menentukan zona perakaran tanaman.</p>'
+                },
+                'Kemiringan Lereng': {
+                    name: 'Kemiringan Lereng',
+                    legend: [
+                        { color: '#35d945', label: 'S1' },
+                        { color: '#97e573', label: 'S2' },
+                        { color: '#ffb74d', label: 'S3' },
+                        { color: '#ff1919', label: 'N' }
+                    ],
+                    description: 'Kemiringan lereng lahan',
+                    info: '<h3>Kemiringan Lereng</h3><p>Kemiringan lereng mempengaruhi risiko erosi dan pengelolaan lahan.</p>'
+                },
+                'Kesesuaian Lahan': {
+                    name: 'Kesesuaian Lahan',
+                    legend: [
+                        { color: '#1a9641', label: 'Sangat Sesuai' },
+                        { color: '#a6d96a', label: 'Sesuai' },
+                        { color: '#fdae61', label: 'Sesuai Marginal' },
+                        { color: '#d7191c', label: 'Tidak Sesuai' }
+                    ],
+                    description: 'Peta hasil integrasi seluruh karakteristik lahan.',
+                    info: '<h3>Kesesuaian Lahan</h3><p>Peta ini menunjukkan tingkat kesesuaian lahan berdasarkan seluruh parameter yang dianalisis.</p>'
+                }
+            };
+
+            // Fungsi untuk mengontrol layer
+            function initLayerControls() {
+                const layerTabs = document.querySelectorAll('.layer-tab');
+                const supportInfoContainer = document.getElementById('support-info-container');
+                const layerInfo = document.getElementById('layer-info');
+                const mapLegend = document.getElementById('map-legend');
+                const legendContent = document.getElementById('legend-content');
+                
+                layerTabs.forEach(tab => {
+                    tab.addEventListener('click', function() {
+                        // Update UI tabs
+                        layerTabs.forEach(t => t.classList.remove('active'));
+                        this.classList.add('active');
+                        
+                        const layer = this.dataset.layer;
+                        
+                        // Sembunyikan legend dan info
+                        mapLegend.style.display = 'none';
+                        supportInfoContainer.style.display = 'none';
+                        
+                        // Tampilkan layer yang dipilih
+                        if (layer === 'none') {
+                            layerInfo.innerHTML = `<p>Pilih layer untuk melihat informasi lahan</p>`;
+                            // Sembunyikan semua iframe peta
+                            document.querySelectorAll('.folium-map-tab').forEach(div => div.style.display = 'none');
+                            document.getElementById('folium-map-none').style.display = 'block';
+                        } else {
+                            // Tampilkan informasi layer
+                            const currentLayer = layerData[layer];
+                            layerInfo.innerHTML = `
+                                <h4>${currentLayer.name}</h4>
+                                <p>${currentLayer.description}</p>
+                            `;
+                            
+                            // Buat legend
+                            legendContent.innerHTML = '';
+                            currentLayer.legend.forEach(item => {
+                                legendContent.innerHTML += `
+                                    <div class="legend-item">
+                                        <div class="legend-color" style="background-color:${item.color}"></div>
+                                        <span>${item.label}</span>
+                                    </div>
+                                `;
+                            });
+                            
+                            // Tampilkan info tambahan
+                            supportInfoContainer.style.display = 'block';
+                            supportInfoContainer.innerHTML = currentLayer.info;
+                            mapLegend.style.display = 'block';
+                            
+                            // Sembunyikan semua iframe peta
+                            document.querySelectorAll('.folium-map-tab').forEach(div => div.style.display = 'none');
+                            // Tampilkan iframe sesuai layer
+                            if (layer === 'Batuan Permukaan') {
+                                document.getElementById('folium-map-batuan').style.display = 'block';
+                            } else if (layer === 'KTK') {
+                                document.getElementById('folium-map-ktk').style.display = 'block';
+                            } else if (layer === 'C Organik') {
+                                document.getElementById('folium-map-corg').style.display = 'block';
+                            } else if (layer === 'pH') {
+                                document.getElementById('folium-map-ph').style.display = 'block';
+                            } else if (layer === 'Tesktur') {
+                                document.getElementById('folium-map-tekstur').style.display = 'block';
+                            } else if (layer === 'Drainase') {
+                                document.getElementById('folium-map-drainase').style.display = 'block';
+                            } else if (layer === 'Salinitas') {
+                                document.getElementById('folium-map-salinitas').style.display = 'block';
+                            } else if (layer === 'Kedalaman Tanah') {
+                                document.getElementById('folium-map-KedalamanTanah').style.display = 'block';
+                            } else if (layer === 'Kemiringan Lereng') {
+                                document.getElementById('folium-map-lereng').style.display = 'block';
+                            } else if (layer === 'Kesesuaian Lahan') {
+                                document.getElementById('folium-map-kesesuaian').style.display = 'block';
+                            }
+                        }
+                    });
+                });
+
+                // Add button functionality
+                const addButton = document.getElementById('add-data');
+                const uploadModal = document.getElementById('upload-modal');
+                const closeUploadModal = document.getElementById('close-upload-modal');
+                addButton.addEventListener('click', function() {
+                    uploadModal.style.display = 'flex';
+                });
+                if (closeUploadModal) {
+                    closeUploadModal.addEventListener('click', function() {
+                        uploadModal.style.display = 'none';
+                    });
+                }
+                // Tutup modal jika klik di luar form
+                uploadModal && uploadModal.addEventListener('click', function(e) {
+                    if (e.target === uploadModal) uploadModal.style.display = 'none';
+                });
+                
+                // Aktifkan tab pertama (batuan permukaan)
+                document.querySelector('.layer-tab.active').click();
+            }
+
+            
+            // Show home by default
+            document.getElementById('home').style.display = 'block';
+
+            // Tidak perlu lagi inisialisasi window.folium_map atau fungsi show/hide layer folium karena sudah pakai iframe per layer
+        });
+
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            // === Chatbot dengan webhook n8n ===
+            function initGeoAIChatbot() {
+                const chatbotMessages = document.getElementById('geoai-chatbot-messages');
+                const chatbotForm = document.getElementById('geoai-chatbot-form');
+                const chatbotInput = document.getElementById('geoai-chatbot-input');
+                const chatbotSendBtn = document.getElementById('geoai-chatbot-send-btn');
+
+                // Ganti dengan URL webhook n8n kamu
+                const N8N_WEBHOOK_URL = "http://localhost:5678/webhook/1c0d08f0-abd0-4bdc-beef-370c27aae1a0/chat";
+
+                if (chatbotMessages && chatbotMessages.childElementCount === 0) {
+                    addChatbotMessage("Halo! Saya GeoAI (n8n). Ada yang ingin Anda tanyakan?", 'bot');
+                }
+
+                function addChatbotMessage(text, sender) {
+                    const msgDiv = document.createElement('div');
+                    msgDiv.className = 'geoai-chatbot-message ' + sender;
+                    const bubble = document.createElement('div');
+                    bubble.className = 'geoai-chatbot-bubble';
+                    bubble.textContent = text;
+                    msgDiv.appendChild(bubble);
+                    chatbotMessages.appendChild(msgDiv);
+                    chatbotMessages.scrollTop = chatbotMessages.scrollHeight;
+                }
+
+                chatbotForm.onsubmit = async function(e) {
+                    e.preventDefault();
+                    const userMsg = chatbotInput.value.trim();
+                    if (!userMsg) return;
+                    addChatbotMessage(userMsg, 'user');
+                    chatbotInput.value = '';
+                    chatbotSendBtn.disabled = true;
+
+                    // Tampilkan loading
+                    const loadingMsg = document.createElement('div');
+                    loadingMsg.className = 'geoai-chatbot-message bot';
+                    loadingMsg.id = 'geoai-chatbot-loading-msg';
+                    loadingMsg.innerHTML = '<div class="geoai-chatbot-bubble">...</div>';
+                    chatbotMessages.appendChild(loadingMsg);
+                    chatbotMessages.scrollTop = chatbotMessages.scrollHeight;
+
+                    try {
+                        const response = await fetch(N8N_WEBHOOK_URL, {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({ message: userMsg })
+                        });
+                        const data = await response.json();
+                        document.getElementById('geoai-chatbot-loading-msg').remove();
+
+                        // n8n sebaiknya return { "reply": "..." }
+                        let botMsg = data.reply || "Maaf, tidak ada respon dari n8n.";
+                        addChatbotMessage(botMsg, 'bot');
+                    } catch (error) {
+                        document.getElementById('geoai-chatbot-loading-msg').remove();
+                        addChatbotMessage("Maaf, tidak bisa terhubung ke server n8n.", 'bot');
+                        console.error('Error:', error);
+                    } finally {
+                        chatbotSendBtn.disabled = false;
+                    }
+                };
+            }
+
+            // Panggil chatbot hanya jika tab chatbot dibuka
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.addEventListener('click', function() {
+                    if (this.getAttribute('data-target') === 'chatbot') {
+                        setTimeout(initGeoAIChatbot, 100);
+                    }
+                });
+            });
+        });
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <link href="https://cdn.jsdelivr.net/npm/@n8n/chat/dist/style.css" rel="stylesheet" />
+<script type="module">
+	import { createChat } from 'https://cdn.jsdelivr.net/npm/@n8n/chat/dist/chat.bundle.es.js';
+
+	createChat({
+		webhookUrl: 'http://localhost:5678/webhook/1c0d08f0-abd0-4bdc-beef-370c27aae1a0/chat'
+	});
+</script>
+
+</script>
+</body>
+</html>
